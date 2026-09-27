@@ -1,16 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Plus, X, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Smartphone, User, FileText, Calendar, Lock, Clock, Trash2, Edit, CheckCircle, Printer, Download, LogOut, KeyRound, UserRound } from 'lucide-react';
 
-const WEB_APP_URL = import.meta.env.VITE_APP_WEB_APP_URL;
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwakTj4VBQqTF3KEQ0Eq_mNJON-ID4000I5m5CSxd9sBW9Av0jBG3bo7HPWVu-oariR8A/exec";
 
 export default function App() {
-  // GÜVENLİK VE OTURUM STATE'LERİ
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginData, setLoginData] = useState({ username: "", password: "" });
   const [loginError, setLoginError] = useState("");
 
   const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false); // Sadece giriş yapıldıktan sonra true olacak
+  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -19,7 +18,6 @@ export default function App() {
   const [selectedRecord, setSelectedRecord] = useState(null);
   
   const [toast, setToast] = useState(null);
-  
   const [sortConfig, setSortConfig] = useState({ key: 'tablo_tarihi', direction: 'desc' });
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -29,10 +27,8 @@ export default function App() {
     fisno: "", tablo_tarihi: "", musteri: "", tel: "", marka: "", model: "", uacik: "", fiyat: "", sifre: "", uid: ""
   });
 
-  // UYGULAMA İLK AÇILDIĞINDA OTURUM KONTROLÜ (12 Saat Mantığı)
   useEffect(() => {
     const expiry = localStorage.getItem('auth_expiry');
-    // Eğer token varsa ve şu anki zamandan büyükse (süresi dolmadıysa)
     if (expiry && parseInt(expiry) > Date.now()) {
       setIsAuthenticated(true);
     } else {
@@ -41,7 +37,6 @@ export default function App() {
     }
   }, []);
 
-  // GİRİŞ YAPILDIĞINDA VERİLERİ ÇEK
   useEffect(() => {
     if (isAuthenticated) {
       fetchData();
@@ -53,15 +48,12 @@ export default function App() {
     setTimeout(() => { setToast(null); }, 3000);
   };
 
-  // GİRİŞ YAPMA FONKSİYONU
   const handleLogin = (e) => {
     e.preventDefault();
-    // .env dosyasından çekilen bilgiler
     const validUser = import.meta.env.VITE_APP_USERNAME;
     const validPass = import.meta.env.VITE_APP_PASSWORD;
 
     if (loginData.username === validUser && loginData.password === validPass) {
-      // 12 saat = 12 * 60 * 60 * 1000 = 43200000 milisaniye
       const expiryTime = Date.now() + 43200000;
       localStorage.setItem('auth_expiry', expiryTime.toString());
       setIsAuthenticated(true);
@@ -71,7 +63,6 @@ export default function App() {
     }
   };
 
-  // ÇIKIŞ YAPMA FONKSİYONU
   const handleLogout = () => {
     localStorage.removeItem('auth_expiry');
     setIsAuthenticated(false);
@@ -311,9 +302,6 @@ export default function App() {
     showToast("Veriler başarıyla bilgisayarına indirildi!");
   };
 
-  // -------------------------------------------------------------
-  // EĞER KULLANICI GİRİŞ YAPMAMIŞSA (LOGIN EKRANI)
-  // -------------------------------------------------------------
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 font-sans">
@@ -368,9 +356,6 @@ export default function App() {
     );
   }
 
-  // -------------------------------------------------------------
-  // KULLANICI GİRİŞ YAPMIŞSA (ANA UYGULAMA)
-  // -------------------------------------------------------------
   return (
     <div className="min-h-screen print:min-h-0 bg-gray-50 print:bg-white text-gray-800 font-sans relative flex flex-col">
       <style>
@@ -434,34 +419,33 @@ export default function App() {
 
       {/* NORMAL EKRAN GÖRÜNÜMÜ */}
       <div className="print:hidden flex-1 flex flex-col">
-        <header className="bg-[#001E3E] text-white p-6 shadow-md">
+        <header className="bg-[#001E3E] text-white p-4 md:p-6 shadow-md">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-            <div>
+            <div className="text-center md:text-left">
               <h1 className="text-2xl font-bold text-[#FEE227]">Yurttaş İletişim</h1>
               <p className="text-sm opacity-80 mt-1">Premium Teknik Servis Yönetimi</p>
             </div>
-            <div className="flex items-center gap-4 w-full md:w-auto">
-              <div className="relative w-full md:w-64 text-gray-800">
+            <div className="flex flex-wrap items-center justify-center md:justify-end gap-3 w-full md:w-auto">
+              <div className="relative w-full sm:w-64 text-gray-800 order-3 sm:order-1 mt-2 sm:mt-0">
                 <Search className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
                 <input type="text" placeholder="Müşteri, Marka, Fiş No..." className="w-full pl-10 pr-4 py-2 rounded-lg border-2 border-transparent focus:border-[#FEE227] focus:outline-none bg-white/90" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
               </div>
-              <button onClick={handleOpenNewRecordModal} className="bg-[#FEE227] text-[#001E3E] font-bold py-2 px-4 rounded-lg flex items-center gap-2 hover:bg-yellow-400 transition-colors whitespace-nowrap">
+              <button onClick={handleOpenNewRecordModal} className="order-1 sm:order-2 bg-[#FEE227] text-[#001E3E] font-bold py-2 px-4 rounded-lg flex items-center gap-2 hover:bg-yellow-400 transition-colors whitespace-nowrap">
                 <Plus className="w-5 h-5" /> Yeni Kayıt
               </button>
-              {/* ÇIKIŞ YAP BUTONU */}
-              <button onClick={handleLogout} className="bg-red-500/10 text-red-400 p-2 rounded-lg hover:bg-red-500 hover:text-white transition-colors" title="Güvenli Çıkış Yap">
+              <button onClick={handleLogout} className="order-2 sm:order-3 bg-red-500/10 text-red-400 p-2 rounded-lg hover:bg-red-500 hover:text-white transition-colors" title="Güvenli Çıkış Yap">
                 <LogOut className="w-6 h-6" />
               </button>
             </div>
           </div>
         </header>
 
-        <main className="max-w-7xl mx-auto p-6 flex-1 w-full">
+        <main className="max-w-7xl mx-auto p-4 md:p-6 flex-1 w-full">
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full">
-            <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center text-sm">
+            <div className="p-4 border-b border-gray-100 bg-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-sm">
               <span className="text-gray-500 font-medium">Toplam {filteredAndSortedData.length} kayıt bulunuyor</span>
               
-              <div className="flex items-center gap-6">
+              <div className="flex items-center justify-between w-full sm:w-auto gap-6">
                 <button 
                   onClick={exportToCSV}
                   disabled={loading || filteredAndSortedData.length === 0}
@@ -522,9 +506,9 @@ export default function App() {
             </div>
 
             {filteredAndSortedData.length > 0 && (
-              <div className="p-4 border-t border-gray-100 bg-white flex items-center justify-between mt-auto">
-                <div className="text-sm text-gray-500">
-                  <span className="font-medium text-gray-800">{filteredAndSortedData.length}</span> kayıttan <span className="font-medium text-gray-800">{indexOfFirstItem + 1}</span> - <span className="font-medium text-gray-800">{Math.min(indexOfLastItem, filteredAndSortedData.length)}</span> arası gösteriliyor
+              <div className="p-4 border-t border-gray-100 bg-white flex flex-col sm:flex-row items-center justify-between gap-4 mt-auto">
+                <div className="text-sm text-gray-500 text-center sm:text-left">
+                  <span className="font-medium text-gray-800">{filteredAndSortedData.length}</span> kayıttan <span className="font-medium text-gray-800">{indexOfFirstItem + 1}</span> - <span className="font-medium text-gray-800">{Math.min(indexOfLastItem, filteredAndSortedData.length)}</span> arası
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -551,91 +535,95 @@ export default function App() {
         </main>
       </div>
 
-      {/* YENİ / DÜZENLE MODALI */}
+      {/* YENİ / DÜZENLE MODALI (MOBİL İÇİN DÜZELTİLDİ) */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 overflow-y-auto print:hidden" onClick={(e) => handleOverlayClick(e, () => setIsModalOpen(false))}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden my-8">
-            <div className="bg-[#001E3E] p-6 flex justify-between items-center text-white">
-              <h2 className="text-xl font-bold flex items-center gap-2">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[9999] print:hidden" onClick={(e) => handleOverlayClick(e, () => setIsModalOpen(false))}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[95vh] flex flex-col overflow-hidden">
+            {/* Modal Başlığı - Sabit */}
+            <div className="bg-[#001E3E] p-4 md:p-6 flex justify-between items-center text-white shrink-0">
+              <h2 className="text-lg md:text-xl font-bold flex items-center gap-2">
                 {modalMode === 'edit' ? <Edit className="text-[#FEE227] w-5 h-5" /> : <Plus className="text-[#FEE227]" />}
                 {modalMode === 'edit' ? "Kayıt Düzenle" : "Yeni Servis Fişi Oluştur"}
               </h2>
               <button onClick={() => setIsModalOpen(false)} className="text-gray-300 hover:text-white transition-colors"><X className="w-6 h-6" /></button>
             </div>
             
-            <form onSubmit={handleSubmit} className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-gray-500 uppercase">Fiş Numarası</label>
-                <input type="text" name="fisno" value={formData.fisno} readOnly className="w-full p-2.5 bg-gray-100 border border-gray-200 rounded-lg text-gray-500 font-mono text-sm" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-gray-500 uppercase">Tarih ve Saat</label>
-                <input type="text" name="tablo_tarihi" value={formData.tablo_tarihi} onChange={handleInputChange} className="w-full p-2.5 border border-gray-300 rounded-lg focus:border-[#001E3E] outline-none" required />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-gray-500 uppercase">Müşteri Adı Soyadı</label>
-                <input type="text" name="musteri" value={formData.musteri} onChange={handleInputChange} className="w-full p-2.5 border border-gray-300 rounded-lg focus:border-[#001E3E] outline-none" required />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-gray-500 uppercase">Telefon Numarası</label>
-                <div className="relative flex items-center">
-                  <span className="absolute left-3 text-gray-500">0</span>
-                  <input type="tel" name="tel" value={formData.tel} onChange={handleInputChange} placeholder="5XX XXX XX XX" className="w-full pl-7 p-2.5 border border-gray-300 rounded-lg focus:border-[#001E3E] outline-none tracking-wider" required />
+            {/* Form Alanı - Kaydırılabilir */}
+            <div className="p-4 md:p-6 overflow-y-auto">
+              <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Fiş Numarası</label>
+                  <input type="text" name="fisno" value={formData.fisno} readOnly className="w-full p-2.5 bg-gray-100 border border-gray-200 rounded-lg text-gray-500 font-mono text-sm" />
                 </div>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-gray-500 uppercase">Cihaz Markası</label>
-                <input type="text" name="marka" value={formData.marka} onChange={handleInputChange} className="w-full p-2.5 border border-gray-300 rounded-lg focus:border-[#001E3E] outline-none" required />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-gray-500 uppercase">Cihaz Modeli</label>
-                <input type="text" name="model" value={formData.model} onChange={handleInputChange} className="w-full p-2.5 border border-gray-300 rounded-lg focus:border-[#001E3E] outline-none" required />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-gray-500 uppercase">Cihaz Şifresi</label>
-                <div className="relative flex items-center">
-                  <Lock className="absolute left-3 w-4 h-4 text-gray-400" />
-                  <input type="text" name="sifre" value={formData.sifre} onChange={handleInputChange} placeholder="Yoksa boş bırakın" className="w-full pl-9 p-2.5 border border-gray-300 rounded-lg focus:border-[#001E3E] outline-none" />
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Tarih ve Saat</label>
+                  <input type="text" name="tablo_tarihi" value={formData.tablo_tarihi} onChange={handleInputChange} className="w-full p-2.5 border border-gray-300 rounded-lg focus:border-[#001E3E] outline-none" required />
                 </div>
-              </div>
-              <div className="space-y-1 md:col-span-2">
-                <label className="text-xs font-semibold text-gray-500 uppercase">Arıza / Yapılan İşlem</label>
-                <textarea name="uacik" value={formData.uacik || formData.islem} onChange={handleInputChange} rows="2" className="w-full p-2.5 border border-gray-300 rounded-lg focus:border-[#001E3E] outline-none resize-none" required></textarea>
-              </div>
-              <div className="space-y-1 md:col-span-2">
-                <label className="text-xs font-semibold text-gray-500 uppercase">Toplam Tutar (TL)</label>
-                <input type="number" name="fiyat" value={formData.fiyat} onChange={handleInputChange} className="w-full p-2.5 border border-gray-300 rounded-lg focus:border-[#001E3E] outline-none text-lg font-bold text-[#001E3E]" required />
-              </div>
-              <div className="md:col-span-2 pt-4 flex gap-3">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-3 px-4 border border-gray-300 text-gray-600 rounded-lg font-semibold hover:bg-gray-50 transition-colors">İptal</button>
-                <button type="submit" disabled={loading} className="flex-1 py-3 px-4 bg-[#001E3E] text-white rounded-lg font-bold hover:bg-[#001E3E]/90 transition-colors flex items-center justify-center gap-2">
-                  {loading ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> İşleniyor...</> : "Kaydet"}
-                </button>
-              </div>
-            </form>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Müşteri Adı Soyadı</label>
+                  <input type="text" name="musteri" value={formData.musteri} onChange={handleInputChange} className="w-full p-2.5 border border-gray-300 rounded-lg focus:border-[#001E3E] outline-none" required />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Telefon Numarası</label>
+                  <div className="relative flex items-center">
+                    <span className="absolute left-3 text-gray-500">0</span>
+                    <input type="tel" name="tel" value={formData.tel} onChange={handleInputChange} placeholder="5XX XXX XX XX" className="w-full pl-7 p-2.5 border border-gray-300 rounded-lg focus:border-[#001E3E] outline-none tracking-wider" required />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Cihaz Markası</label>
+                  <input type="text" name="marka" value={formData.marka} onChange={handleInputChange} className="w-full p-2.5 border border-gray-300 rounded-lg focus:border-[#001E3E] outline-none" required />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Cihaz Modeli</label>
+                  <input type="text" name="model" value={formData.model} onChange={handleInputChange} className="w-full p-2.5 border border-gray-300 rounded-lg focus:border-[#001E3E] outline-none" required />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Cihaz Şifresi</label>
+                  <div className="relative flex items-center">
+                    <Lock className="absolute left-3 w-4 h-4 text-gray-400" />
+                    <input type="text" name="sifre" value={formData.sifre} onChange={handleInputChange} placeholder="Yoksa boş bırakın" className="w-full pl-9 p-2.5 border border-gray-300 rounded-lg focus:border-[#001E3E] outline-none" />
+                  </div>
+                </div>
+                <div className="space-y-1 md:col-span-2">
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Arıza / Yapılan İşlem</label>
+                  <textarea name="uacik" value={formData.uacik || formData.islem} onChange={handleInputChange} rows="2" className="w-full p-2.5 border border-gray-300 rounded-lg focus:border-[#001E3E] outline-none resize-none" required></textarea>
+                </div>
+                <div className="space-y-1 md:col-span-2">
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Toplam Tutar (TL)</label>
+                  <input type="number" name="fiyat" value={formData.fiyat} onChange={handleInputChange} className="w-full p-2.5 border border-gray-300 rounded-lg focus:border-[#001E3E] outline-none text-lg font-bold text-[#001E3E]" required />
+                </div>
+                <div className="md:col-span-2 pt-4 flex flex-col sm:flex-row gap-3">
+                  <button type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:flex-1 py-3 px-4 border border-gray-300 text-gray-600 rounded-lg font-semibold hover:bg-gray-50 transition-colors order-2 sm:order-1">İptal</button>
+                  <button type="submit" disabled={loading} className="w-full sm:flex-1 py-3 px-4 bg-[#001E3E] text-white rounded-lg font-bold hover:bg-[#001E3E]/90 transition-colors flex items-center justify-center gap-2 order-1 sm:order-2">
+                    {loading ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> İşleniyor...</> : "Kaydet"}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
 
-      {/* DETAY MODALI */}
+      {/* DETAY MODALI (MOBİL İÇİN DÜZELTİLDİ) */}
       {isDetailModalOpen && selectedRecord && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 overflow-y-auto print:hidden" onClick={(e) => handleOverlayClick(e, () => setIsDetailModalOpen(false))}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden my-8">
-            <div className="bg-[#001E3E] p-6 relative">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[9999] print:hidden" onClick={(e) => handleOverlayClick(e, () => setIsDetailModalOpen(false))}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[95vh] flex flex-col overflow-hidden">
+            <div className="bg-[#001E3E] p-4 md:p-6 relative shrink-0">
               <button onClick={() => setIsDetailModalOpen(false)} className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors"><X className="w-6 h-6" /></button>
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#FEE227] mb-3 border-4 border-[#001E3E] shadow-lg"><User className="w-8 h-8 text-[#001E3E]" /></div>
-                <h3 className="text-2xl font-bold text-white">{selectedRecord.musteri}</h3>
-                <p className="text-[#FEE227] mt-1 font-mono">{selectedRecord.tel}</p>
+                <div className="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full bg-[#FEE227] mb-2 md:mb-3 border-4 border-[#001E3E] shadow-lg"><User className="w-7 h-7 md:w-8 md:h-8 text-[#001E3E]" /></div>
+                <h3 className="text-xl md:text-2xl font-bold text-white">{selectedRecord.musteri}</h3>
+                <p className="text-[#FEE227] mt-1 font-mono text-sm">{selectedRecord.tel}</p>
               </div>
             </div>
 
-            <div className="p-6 space-y-6">
-              <div className="flex justify-between items-center pb-4 border-b border-gray-100">
+            <div className="p-4 md:p-6 space-y-4 md:space-y-6 overflow-y-auto">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-4 border-b border-gray-100">
                 <div className="flex items-center gap-2 text-gray-600">
                   <Calendar className="w-4 h-4 text-blue-500" />
                   <Clock className="w-4 h-4 text-orange-400 ml-1" />
-                  <span className="font-medium tracking-wide">{formatDateTime(selectedRecord.tablo_tarihi)}</span>
+                  <span className="font-medium tracking-wide text-sm">{formatDateTime(selectedRecord.tablo_tarihi)}</span>
                 </div>
                 <div className="flex items-center gap-2 text-gray-600">
                   <FileText className="w-5 h-5 text-gray-400" />
@@ -644,12 +632,12 @@ export default function App() {
               </div>
 
               <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                <div className="flex items-start gap-4">
-                  <div className="p-3 bg-white rounded-lg shadow-sm"><Smartphone className="w-6 h-6 text-[#001E3E]" /></div>
-                  <div className="flex-1">
+                <div className="flex flex-col sm:flex-row items-start gap-4">
+                  <div className="p-3 bg-white rounded-lg shadow-sm hidden sm:block"><Smartphone className="w-6 h-6 text-[#001E3E]" /></div>
+                  <div className="flex-1 w-full">
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Cihaz Bilgisi</p>
                     <p className="text-lg font-bold text-gray-800">{selectedRecord.marka} {selectedRecord.model}</p>
-                    <div className="mt-3 flex items-center gap-2 text-sm">
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
                       <span className="font-semibold text-gray-600 flex items-center gap-1"><Lock className="w-4 h-4" /> Şifre:</span>
                       <span className={`px-2 py-0.5 rounded font-mono ${selectedRecord.sifre && selectedRecord.sifre !== "Şifre Yok" ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>{selectedRecord.sifre || "Bilinmiyor"}</span>
                     </div>
@@ -659,19 +647,19 @@ export default function App() {
 
               <div>
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Yapılan İşlem / Arıza</p>
-                <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 text-gray-700">
+                <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 text-gray-700 text-sm">
                   {selectedRecord.uacik || selectedRecord.islem || "İşlem detayı girilmemiş."}
                 </div>
               </div>
 
               <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                 <span className="text-gray-500 font-medium">Toplam Tutar</span>
-                <span className="text-3xl font-black text-[#001E3E]">{selectedRecord.fiyat ? `${selectedRecord.fiyat} ₺` : "Ücretsiz"}</span>
+                <span className="text-2xl md:text-3xl font-black text-[#001E3E]">{selectedRecord.fiyat ? `${selectedRecord.fiyat} ₺` : "Ücretsiz"}</span>
               </div>
             </div>
             
-            <div className="bg-gray-50 p-4 border-t border-gray-100 flex justify-between items-center">
-              <div className="flex gap-2">
+            <div className="bg-gray-50 p-4 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0">
+              <div className="flex gap-2 w-full sm:w-auto justify-center">
                 <button onClick={() => handleDelete(selectedRecord)} disabled={loading} className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors" title="Kaydı Sil">
                   <Trash2 className="w-5 h-5" />
                 </button>
@@ -684,7 +672,7 @@ export default function App() {
                 </button>
               </div>
 
-              <button onClick={() => setIsDetailModalOpen(false)} className="px-6 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition-colors">
+              <button onClick={() => setIsDetailModalOpen(false)} className="w-full sm:w-auto px-6 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition-colors">
                 Kapat
               </button>
             </div>
@@ -694,9 +682,9 @@ export default function App() {
 
       {/* TOAST BİLDİRİMİ */}
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-[9999] flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl text-white font-medium transform transition-all duration-300 ease-in-out ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
-          {toast.type === 'success' ? <CheckCircle className="w-6 h-6" /> : <X className="w-6 h-6" />}
-          <span>{toast.message}</span>
+        <div className={`fixed bottom-6 right-6 left-6 md:left-auto z-[9999] flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl text-white font-medium transform transition-all duration-300 ease-in-out ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
+          {toast.type === 'success' ? <CheckCircle className="w-6 h-6 shrink-0" /> : <X className="w-6 h-6 shrink-0" />}
+          <span className="text-sm md:text-base">{toast.message}</span>
         </div>
       )}
     </div>
