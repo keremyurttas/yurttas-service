@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Plus, X, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Smartphone, User, FileText, Calendar, Lock, Clock, Trash2, Edit, CheckCircle, Printer, Download, LogOut, KeyRound, UserRound, ListTodo, Database, Loader2 } from 'lucide-react';
 
-const WEB_APP_URL = "import.meta.env.VITE_APP_WEB_APP_URL";
+const WEB_APP_URL = import.meta.env.VITE_APP_WEB_APP_URL;
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
