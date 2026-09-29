@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Plus, X, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Smartphone, User, FileText, Calendar, Lock, Clock, Trash2, Edit, CheckCircle, Printer, Download, LogOut, KeyRound, UserRound } from 'lucide-react';
+import { Search, Plus, X, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Smartphone, User, FileText, Calendar, Lock, Clock, Trash2, Edit, CheckCircle, Printer, Download, LogOut, KeyRound, UserRound, ListTodo, Database, Loader2 } from 'lucide-react';
 
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwakTj4VBQqTF3KEQ0Eq_mNJON-ID4000I5m5CSxd9sBW9Av0jBG3bo7HPWVu-oariR8A/exec";
+const WEB_APP_URL = "import.meta.env.VITE_APP_WEB_APP_URL";
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -10,12 +10,20 @@ export default function App() {
 
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState(null); // Silinen kaydın loader takibi
   const [searchTerm, setSearchTerm] = useState("");
+  
+  // SEKMELER VE FİLTRELER
+  const [activeTab, setActiveTab] = useState("active");
+  const [statusFilter, setStatusFilter] = useState("Tüm");
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState("create");
   const [selectedRecord, setSelectedRecord] = useState(null);
+  
+  // Hızlı Statü Güncelleme Modalı State'i
+  const [statusModalRecord, setStatusModalRecord] = useState(null);
   
   const [toast, setToast] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'tablo_tarihi', direction: 'desc' });
@@ -24,7 +32,7 @@ export default function App() {
   const itemsPerPage = 20;
 
   const [formData, setFormData] = useState({
-    fisno: "", tablo_tarihi: "", musteri: "", tel: "", marka: "", model: "", uacik: "", fiyat: "", sifre: "", uid: ""
+    fisno: "", tablo_tarihi: "", musteri: "", tel: "", marka: "", model: "", uacik: "", fiyat: "", sifre: "", uid: "", statu: "İşlemde"
   });
 
   useEffect(() => {
@@ -84,13 +92,13 @@ export default function App() {
   };
 
   useEffect(() => {
-    document.body.style.overflow = (isModalOpen || isDetailModalOpen) ? 'hidden' : 'unset';
+    document.body.style.overflow = (isModalOpen || isDetailModalOpen || statusModalRecord) ? 'hidden' : 'unset';
     return () => { document.body.style.overflow = 'unset'; };
-  }, [isModalOpen, isDetailModalOpen]);
+  }, [isModalOpen, isDetailModalOpen, statusModalRecord]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, sortConfig]);
+  }, [searchTerm, sortConfig, activeTab, statusFilter]);
 
   const formatDate = (dateString) => {
     if (!dateString) return "-";
@@ -119,7 +127,18 @@ export default function App() {
   const safeStr = (val) => (val === null || val === undefined ? "" : String(val).toLowerCase());
 
   const filteredAndSortedData = useMemo(() => {
-    let filtered = data.filter((row) =>
+    let processedData = data.map(row => ({
+      ...row,
+      statu: row.statu ? row.statu : "Teslim Edildi"
+    }));
+
+    if (activeTab === "active") {
+      processedData = processedData.filter(row => row.statu === "İşlemde");
+    } else if (activeTab === "all" && statusFilter !== "Tüm") {
+      processedData = processedData.filter(row => row.statu === statusFilter);
+    }
+
+    let filtered = processedData.filter((row) =>
       safeStr(row.musteri).includes(searchTerm.toLowerCase()) ||
       safeStr(row.marka).includes(searchTerm.toLowerCase()) ||
       safeStr(row.model).includes(searchTerm.toLowerCase()) ||
@@ -138,7 +157,7 @@ export default function App() {
       });
     }
     return filtered;
-  }, [data, searchTerm, sortConfig]);
+  }, [data, searchTerm, sortConfig, activeTab, statusFilter]);
 
   const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -164,14 +183,17 @@ export default function App() {
     setFormData({
       uid: Math.floor(Math.random() * 900000) + 100000,
       fisno: generateFisNo(), tablo_tarihi: formatDateTime(new Date().toISOString()),
-      musteri: "", tel: "", marka: "", model: "", uacik: "", fiyat: "", sifre: ""
+      musteri: "", tel: "", marka: "", model: "", uacik: "", fiyat: "", sifre: "", statu: "İşlemde"
     });
     setModalMode("create");
     setIsModalOpen(true);
   };
 
   const handleOpenEditModal = (record) => {
-    setFormData(record);
+    setFormData({
+      ...record,
+      statu: record.statu || "Teslim Edildi"
+    });
     setModalMode("edit");
     setIsDetailModalOpen(false); 
     setIsModalOpen(true); 
@@ -232,9 +254,58 @@ export default function App() {
     }
   };
 
+  // HIZLI STATÜ GÜNCELLEME (ANINDA GERİ BİLDİRİM)
+  const handleQuickStatusChange = async (record, newStatus) => {
+    setStatusModalRecord(null);
+    const oldStatus = record.statu || "Teslim Edildi";
+    if (oldStatus === newStatus) return;
+
+    const updated = { ...record, statu: newStatus };
+    
+    setData(prev => prev.map(item => item.fisno === record.fisno ? updated : item));
+    if (selectedRecord && selectedRecord.fisno === record.fisno) {
+      setSelectedRecord(updated);
+    }
+    showToast(`Durum "${newStatus}" olarak güncellendi!`);
+
+    try {
+      const response = await fetch(WEB_APP_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({
+          action: "update",
+          uid: record.uid,
+          fisno: record.fisno,
+          data: updated
+        }),
+      });
+      const result = await response.json();
+      if (result.status !== "success") {
+        showToast("Durum kaydedilemedi, değişiklik geri alınıyor!", "error");
+        fetchData();
+      }
+    } catch (err) {
+      showToast("Bağlantı hatası! Durum geri alınıyor.", "error");
+      fetchData();
+    }
+  };
+
+  // SİLME İŞLEMİ (ANINDA GERİ BİLDİRİM + OPTIMISTIC UI)
   const handleDelete = async (record) => {
     if (!window.confirm(`${record.musteri} adlı müşterinin kaydını SİLMEK istediğinize emin misiniz?`)) return;
-    setLoading(true);
+    
+    const previousData = [...data];
+    setDeletingId(record.fisno);
+    setIsDetailModalOpen(false);
+
+    // Anında UI'dan kaldır ve Toast göster (0 gecikme)
+    setData(prev => prev.filter(item => item.fisno !== record.fisno));
+    showToast("Kayıt başarıyla silindi.");
+    
+    if (currentItems.length === 1 && currentPage > 1) {
+      setCurrentPage(prev => prev - 1);
+    }
+
     try {
       const response = await fetch(WEB_APP_URL, {
         method: "POST",
@@ -242,20 +313,15 @@ export default function App() {
         body: JSON.stringify({ action: "delete", uid: record.uid, fisno: record.fisno }),
       });
       const result = await response.json();
-      if (result.status === "success") {
-        setData(prev => prev.filter(item => item.fisno !== record.fisno));
-        setIsDetailModalOpen(false);
-        showToast("Kayıt sistemden kalıcı olarak silindi.");
-        if (currentItems.length === 1 && currentPage > 1) {
-          setCurrentPage(prev => prev - 1);
-        }
-      } else {
+      if (result.status !== "success") {
+        setData(previousData);
         showToast("Silinirken hata oluştu: " + result.message, "error");
       }
     } catch (err) {
-      showToast("Bağlantı hatası: " + err.message, "error");
+      setData(previousData);
+      showToast("Bağlantı hatası! Kayıt geri yüklendi.", "error");
     } finally {
-      setLoading(false);
+      setDeletingId(null);
     }
   };
 
@@ -269,7 +335,7 @@ export default function App() {
       return;
     }
 
-    const headers = ["Fiş No", "Tarih", "Müşteri", "Telefon", "Marka", "Model", "Şifre", "İşlem/Arıza", "Tutar"];
+    const headers = ["Fiş No", "Tarih", "Müşteri", "Telefon", "Marka", "Model", "Şifre", "İşlem/Arıza", "Durum", "Tutar"];
     const csvRows = filteredAndSortedData.map(row => {
       return [
         `"${row.fisno || ''}"`,
@@ -280,6 +346,7 @@ export default function App() {
         `"${row.model || ''}"`,
         `"${row.sifre || ''}"`,
         `"${(row.uacik || row.islem || '').replace(/"/g, '""')}"`,
+        `"${row.statu || 'Teslim Edildi'}"`,
         `"${row.fiyat || '0'}"`
       ].join(",");
     });
@@ -290,7 +357,7 @@ export default function App() {
     
     const today = new Date();
     const dateStr = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`;
-    const fileName = `Yurttas-Iletisim-${dateStr}.csv`;
+    const fileName = `Yurttas-Iletisim-${activeTab === 'active' ? 'Aktif' : 'Tum'}-${dateStr}.csv`;
 
     const link = document.createElement("a");
     link.href = url;
@@ -300,6 +367,30 @@ export default function App() {
     document.body.removeChild(link);
     
     showToast("Veriler başarıyla bilgisayarına indirildi!");
+  };
+
+  const StatusBadge = ({ row }) => {
+    const status = row.statu || "Teslim Edildi";
+    let bgColors = "bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200";
+    if (status === "İşlemde") bgColors = "bg-orange-100 text-orange-800 border-orange-300 hover:bg-orange-200";
+    else if (status === "Teslim Edildi") bgColors = "bg-green-100 text-green-800 border-green-300 hover:bg-green-200";
+    else if (status === "İptal Edildi") bgColors = "bg-red-100 text-red-800 border-red-300 hover:bg-red-200";
+
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setStatusModalRecord(row);
+        }}
+        className={`px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 ${bgColors}`}
+        title="Durumu güncellemek için tıkla"
+      >
+        <span>{status}</span>
+        <ChevronDown className="w-3 h-3 opacity-60" />
+      </button>
+    );
   };
 
   if (!isAuthenticated) {
@@ -376,7 +467,7 @@ export default function App() {
         `}
       </style>
 
-      {/* YAZDIRMA (PRINT) ALANI */}
+      {/* YAZDIRMA ALANI */}
       {selectedRecord && (
         <div className="hidden print:block w-full bg-white text-black pt-8 px-6 pb-2">
           <div className="max-w-md mx-auto border-2 border-gray-800 p-6 rounded-lg text-center font-mono">
@@ -419,7 +510,7 @@ export default function App() {
 
       {/* NORMAL EKRAN GÖRÜNÜMÜ */}
       <div className="print:hidden flex-1 flex flex-col">
-        <header className="bg-[#001E3E] text-white p-4 md:p-6 shadow-md">
+        <header className="bg-[#001E3E] text-white p-4 md:p-6 shadow-md z-10 relative">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="text-center md:text-left">
               <h1 className="text-2xl font-bold text-[#FEE227]">Yurttaş İletişim</h1>
@@ -440,10 +531,45 @@ export default function App() {
           </div>
         </header>
 
+        {/* SEKMELER */}
+        <div className="bg-white border-b border-gray-200 shadow-sm print:hidden">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 flex gap-6">
+            <button 
+              onClick={() => setActiveTab("active")} 
+              className={`py-4 flex items-center gap-2 border-b-2 transition-colors font-semibold ${activeTab === 'active' ? 'border-[#001E3E] text-[#001E3E]' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            >
+              <ListTodo className="w-5 h-5" />
+              Aktif İşlemler
+            </button>
+            <button 
+              onClick={() => setActiveTab("all")} 
+              className={`py-4 flex items-center gap-2 border-b-2 transition-colors font-semibold ${activeTab === 'all' ? 'border-[#001E3E] text-[#001E3E]' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            >
+              <Database className="w-5 h-5" />
+              Tüm Kayıtlar
+            </button>
+          </div>
+        </div>
+
         <main className="max-w-7xl mx-auto p-4 md:p-6 flex-1 w-full">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-full">
             <div className="p-4 border-b border-gray-100 bg-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-sm">
-              <span className="text-gray-500 font-medium">Toplam {filteredAndSortedData.length} kayıt bulunuyor</span>
+              <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
+                <span className="text-gray-500 font-medium">Toplam {filteredAndSortedData.length} kayıt bulunuyor</span>
+                
+                {activeTab === 'all' && (
+                  <select 
+                    value={statusFilter} 
+                    onChange={e => setStatusFilter(e.target.value)} 
+                    className="border border-gray-300 rounded-lg px-3 py-1.5 outline-none focus:border-[#001E3E] text-sm font-medium bg-white text-gray-700 shadow-sm"
+                  >
+                    <option value="Tüm">Tüm Durumlar</option>
+                    <option value="İşlemde">Sadece İşlemde Olanlar</option>
+                    <option value="Teslim Edildi">Sadece Teslim Edilenler</option>
+                    <option value="İptal Edildi">Sadece İptal / İade Edilenler</option>
+                  </select>
+                )}
+              </div>
               
               <div className="flex items-center justify-between w-full sm:w-auto gap-6">
                 <button 
@@ -469,21 +595,31 @@ export default function App() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[800px]">
+              <table className="w-full text-left border-collapse min-w-[900px]">
                 <thead>
                   <tr className="bg-[#001E3E]/5 text-[#001E3E] text-sm uppercase tracking-wider">
                     <th className="p-4 font-semibold cursor-pointer hover:bg-[#001E3E]/10 whitespace-nowrap" onClick={() => handleSort('tablo_tarihi')}><div className="flex items-center gap-1">Tarih <SortIcon columnKey="tablo_tarihi" /></div></th>
                     <th className="p-4 font-semibold cursor-pointer hover:bg-[#001E3E]/10 whitespace-nowrap" onClick={() => handleSort('fisno')}><div className="flex items-center gap-1">Fiş No <SortIcon columnKey="fisno" /></div></th>
                     <th className="p-4 font-semibold cursor-pointer hover:bg-[#001E3E]/10" onClick={() => handleSort('musteri')}><div className="flex items-center gap-1">Müşteri <SortIcon columnKey="musteri" /></div></th>
                     <th className="p-4 font-semibold cursor-pointer hover:bg-[#001E3E]/10" onClick={() => handleSort('marka')}><div className="flex items-center gap-1">Marka/Model <SortIcon columnKey="marka" /></div></th>
-                    <th className="p-4 font-semibold w-1/3">İşlem / Arıza</th>
+                    <th className="p-4 font-semibold w-1/4">İşlem / Arıza</th>
+                    <th className="p-4 font-semibold cursor-pointer hover:bg-[#001E3E]/10 whitespace-nowrap text-center" onClick={() => handleSort('statu')}><div className="flex items-center justify-center gap-1">Durum <SortIcon columnKey="statu" /></div></th>
                     <th className="p-4 font-semibold cursor-pointer hover:bg-[#001E3E]/10 whitespace-nowrap" onClick={() => handleSort('fiyat')}><div className="flex items-center gap-1">Tutar <SortIcon columnKey="fiyat" /></div></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {currentItems.length > 0 ? (
                     currentItems.map((row, index) => (
-                      <tr key={index} className="hover:bg-gray-50 transition-colors cursor-pointer group" onClick={() => { setSelectedRecord(row); setIsDetailModalOpen(true); }}>
+                      <tr 
+                        key={index} 
+                        className="hover:bg-gray-50 transition-colors cursor-pointer group" 
+                        onClick={() => { 
+                          if (!statusModalRecord) {
+                            setSelectedRecord(row); 
+                            setIsDetailModalOpen(true); 
+                          }
+                        }}
+                      >
                         <td className="p-4 text-gray-500 whitespace-nowrap">{formatDate(row.tablo_tarihi)}</td>
                         <td className="p-4 font-mono text-xs text-gray-500">{row.fisno}</td>
                         <td className="p-4">
@@ -495,11 +631,16 @@ export default function App() {
                           <div className="text-sm text-gray-600">{row.model}</div>
                         </td>
                         <td className="p-4 text-sm text-gray-600 max-w-xs truncate">{row.uacik || row.islem || "-"}</td>
+                        
+                        <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
+                          <StatusBadge row={row} />
+                        </td>
+
                         <td className="p-4 font-bold text-gray-800 group-hover:text-[#001E3E] whitespace-nowrap">{row.fiyat ? `${row.fiyat} ₺` : "-"}</td>
                       </tr>
                     ))
                   ) : (
-                    <tr><td colSpan="6" className="p-8 text-center text-gray-500">{loading ? "Yükleniyor..." : "Kayıt bulunamadı."}</td></tr>
+                    <tr><td colSpan="7" className="p-8 text-center text-gray-500">{loading ? "Yükleniyor..." : "Bu filtreye uygun kayıt bulunamadı."}</td></tr>
                   )}
                 </tbody>
               </table>
@@ -535,11 +676,10 @@ export default function App() {
         </main>
       </div>
 
-      {/* YENİ / DÜZENLE MODALI (MOBİL İÇİN DÜZELTİLDİ) */}
+      {/* YENİ / DÜZENLE MODALI */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[9999] print:hidden" onClick={(e) => handleOverlayClick(e, () => setIsModalOpen(false))}>
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[95vh] flex flex-col overflow-hidden">
-            {/* Modal Başlığı - Sabit */}
             <div className="bg-[#001E3E] p-4 md:p-6 flex justify-between items-center text-white shrink-0">
               <h2 className="text-lg md:text-xl font-bold flex items-center gap-2">
                 {modalMode === 'edit' ? <Edit className="text-[#FEE227] w-5 h-5" /> : <Plus className="text-[#FEE227]" />}
@@ -548,7 +688,6 @@ export default function App() {
               <button onClick={() => setIsModalOpen(false)} className="text-gray-300 hover:text-white transition-colors"><X className="w-6 h-6" /></button>
             </div>
             
-            {/* Form Alanı - Kaydırılabilir */}
             <div className="p-4 md:p-6 overflow-y-auto">
               <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
@@ -585,6 +724,21 @@ export default function App() {
                     <input type="text" name="sifre" value={formData.sifre} onChange={handleInputChange} placeholder="Yoksa boş bırakın" className="w-full pl-9 p-2.5 border border-gray-300 rounded-lg focus:border-[#001E3E] outline-none" />
                   </div>
                 </div>
+                
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Cihaz Durumu</label>
+                  <select 
+                    name="statu" 
+                    value={formData.statu} 
+                    onChange={handleInputChange} 
+                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:border-[#001E3E] outline-none bg-white font-medium"
+                  >
+                    <option value="İşlemde">İşlemde (Müşteride Değil)</option>
+                    <option value="Teslim Edildi">Teslim Edildi (Tamamlandı)</option>
+                    <option value="İptal Edildi">İptal Edildi (İade)</option>
+                  </select>
+                </div>
+
                 <div className="space-y-1 md:col-span-2">
                   <label className="text-xs font-semibold text-gray-500 uppercase">Arıza / Yapılan İşlem</label>
                   <textarea name="uacik" value={formData.uacik || formData.islem} onChange={handleInputChange} rows="2" className="w-full p-2.5 border border-gray-300 rounded-lg focus:border-[#001E3E] outline-none resize-none" required></textarea>
@@ -605,7 +759,7 @@ export default function App() {
         </div>
       )}
 
-      {/* DETAY MODALI (MOBİL İÇİN DÜZELTİLDİ) */}
+      {/* DETAY MODALI */}
       {isDetailModalOpen && selectedRecord && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[9999] print:hidden" onClick={(e) => handleOverlayClick(e, () => setIsDetailModalOpen(false))}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[95vh] flex flex-col overflow-hidden">
@@ -615,6 +769,9 @@ export default function App() {
                 <div className="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full bg-[#FEE227] mb-2 md:mb-3 border-4 border-[#001E3E] shadow-lg"><User className="w-7 h-7 md:w-8 md:h-8 text-[#001E3E]" /></div>
                 <h3 className="text-xl md:text-2xl font-bold text-white">{selectedRecord.musteri}</h3>
                 <p className="text-[#FEE227] mt-1 font-mono text-sm">{selectedRecord.tel}</p>
+                <div className="mt-3">
+                  <StatusBadge row={selectedRecord} />
+                </div>
               </div>
             </div>
 
@@ -659,9 +816,19 @@ export default function App() {
             </div>
             
             <div className="bg-gray-50 p-4 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0">
-              <div className="flex gap-2 w-full sm:w-auto justify-center">
-                <button onClick={() => handleDelete(selectedRecord)} disabled={loading} className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors" title="Kaydı Sil">
-                  <Trash2 className="w-5 h-5" />
+              <div className="flex gap-2 w-full sm:w-auto justify-center items-center">
+                <button 
+                  onClick={() => handleDelete(selectedRecord)} 
+                  disabled={deletingId === selectedRecord.fisno} 
+                  className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors flex items-center gap-1.5 disabled:opacity-50" 
+                  title="Kaydı Sil"
+                >
+                  {deletingId === selectedRecord.fisno ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-5 h-5" />
+                  )}
+                  {deletingId === selectedRecord.fisno && <span className="text-xs font-semibold">Siliniyor...</span>}
                 </button>
                 <button onClick={() => handleOpenEditModal(selectedRecord)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors" title="Kaydı Düzenle">
                   <Edit className="w-5 h-5" />
@@ -680,9 +847,73 @@ export default function App() {
         </div>
       )}
 
+      {/* HIZLI STATÜ GÜNCELLEME MODALI */}
+      {statusModalRecord && (
+        <div 
+          className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[10000] print:hidden animate-in fade-in duration-150"
+          onClick={(e) => handleOverlayClick(e, () => setStatusModalRecord(null))}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden p-6 animate-in zoom-in-95 duration-150">
+            <div className="flex justify-between items-center pb-3 border-b border-gray-100">
+              <div>
+                <h3 className="font-bold text-gray-800 text-base">Cihaz Durumunu Güncelle</h3>
+                <p className="text-xs text-gray-500 font-mono mt-0.5">{statusModalRecord.musteri} • {statusModalRecord.fisno}</p>
+              </div>
+              <button 
+                onClick={() => setStatusModalRecord(null)}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-2.5">
+              {[
+                { 
+                  val: "İşlemde", 
+                  label: "İşlemde (Müşteride Değil)",
+                  style: "border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100" 
+                },
+                { 
+                  val: "Teslim Edildi", 
+                  label: "Teslim Edildi (Tamamlandı)",
+                  style: "border-green-200 bg-green-50 text-green-800 hover:bg-green-100" 
+                },
+                { 
+                  val: "İptal Edildi", 
+                  label: "İptal Edildi (İade Edildi)",
+                  style: "border-red-200 bg-red-50 text-red-800 hover:bg-red-100" 
+                }
+              ].map(opt => {
+                const isCurrent = (statusModalRecord.statu || "Teslim Edildi") === opt.val;
+                return (
+                  <button
+                    key={opt.val}
+                    type="button"
+                    onClick={() => handleQuickStatusChange(statusModalRecord, opt.val)}
+                    className={`w-full p-3.5 rounded-xl border font-bold text-sm flex items-center justify-between transition-all cursor-pointer ${opt.style} ${isCurrent ? 'ring-2 ring-[#001E3E]' : ''}`}
+                  >
+                    <span>{opt.label}</span>
+                    {isCurrent && <CheckCircle className="w-5 h-5 text-gray-800" />}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setStatusModalRecord(null)}
+              className="mt-4 w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl text-sm transition-colors"
+            >
+              Vazgeç
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* TOAST BİLDİRİMİ */}
       {toast && (
-        <div className={`fixed bottom-6 right-6 left-6 md:left-auto z-[9999] flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl text-white font-medium transform transition-all duration-300 ease-in-out ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
+        <div className={`fixed bottom-6 right-6 left-6 md:left-auto z-[10001] flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl text-white font-medium transform transition-all duration-300 ease-in-out ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
           {toast.type === 'success' ? <CheckCircle className="w-6 h-6 shrink-0" /> : <X className="w-6 h-6 shrink-0" />}
           <span className="text-sm md:text-base">{toast.message}</span>
         </div>
