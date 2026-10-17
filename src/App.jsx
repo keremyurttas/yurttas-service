@@ -453,15 +453,14 @@ export default function App() {
         {`
           @media print {
             @page {
-              size: 72.1mm 140mm;
+              size: 72.1mm auto;
               margin: 0;
             }
             html, body {
               width: 72.1mm !important;
-              height: 140mm !important;
+              height: auto !important;
               margin: 0 !important;
               padding: 0 !important;
-              overflow: hidden !important;
               background-color: white !important;
             }
           }
@@ -471,8 +470,8 @@ export default function App() {
       {/* YAZDIRMA ALANI (72.1mm x 140mm - Aclas 80) */}
       {selectedRecord && (
         <div
-          className="hidden print:block bg-white text-black font-mono overflow-hidden"
-          style={{ width: "72.1mm", height: "140mm", padding: "3mm", boxSizing: "border-box" }}
+          className="hidden print:block bg-white text-black font-mono"
+          style={{ width: "72.1mm", padding: "3mm", boxSizing: "border-box" }}
         >
           {/* EN ÜSTTE BÜYÜK TELEFON */}
           <div className="text-center border-b-2 border-black pb-2 mb-2">
